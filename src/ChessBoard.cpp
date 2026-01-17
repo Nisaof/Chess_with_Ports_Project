@@ -24,7 +24,7 @@ bool ChessBoard::isInBounds(const Position& pos) const {
 
 const ChessBoard::Square& ChessBoard::getSquare(const Position& pos) const {
   if (!isInBounds(pos)) {
-    throw std::out_of_range("Tahta sınırlarının dışı.");
+    throw std::out_of_range("Position out of board bounds.");
   }
   static const Square empty_square;
   auto it = board.find(posToString(pos));
@@ -33,7 +33,7 @@ const ChessBoard::Square& ChessBoard::getSquare(const Position& pos) const {
 
 void ChessBoard::placePiece(const std::string& piece, bool is_white, int x, int y) {
   if (!isInBounds({x, y})) {
-    throw std::invalid_argument("Geçersiz pozisyon.");
+    throw std::invalid_argument("Invalid position.");
   }
   std::string pos_str = posToString({x, y});
   if (piece.empty()) {
@@ -67,14 +67,14 @@ void ChessBoard::movePiece(const Position& start, const Position& end,
                           MoveValidator& validator, PortalSystem& portal_system, 
                           GameManager& game_manager) {
     if (!isInBounds(start) || !isInBounds(end)) {
-        throw std::invalid_argument("Geçersiz pozisyon.");
+        throw std::invalid_argument("Invalid position.");
     }
 
     const auto& start_square = getSquare(start);
 
     if (!validator.isValidMove(start_square.piece, start, end, start_square.is_white, 
                               *this, portal_system)) {
-        throw std::invalid_argument("Geçersiz hareket.");
+        throw std::invalid_argument("Invalid move.");
     }
 
     std::string captured_piece = getSquare(end).piece;
@@ -84,7 +84,7 @@ void ChessBoard::movePiece(const Position& start, const Position& end,
     std::string start_str = posToString(start);
     std::string end_str = posToString(end);
     if (board.find(start_str) == board.end()) {
-        throw std::invalid_argument("Başlangıç pozisyonunda taş yok.");
+        throw std::invalid_argument("No piece at starting position.");
     }
     board[end_str] = board[start_str];
     board.erase(start_str);
@@ -98,7 +98,7 @@ void ChessBoard::movePiece(const Position& start, const Position& end,
         }
     }
 
-    // En passant 
+    // En passant
     if (validator.toLowerCase(start_square.piece) == "pawn" && 
         abs(end.x - start.x) == 1 && getSquare(end).is_empty()) {
         Position captured_pawn_pos = {end.x, start.y};
@@ -107,24 +107,24 @@ void ChessBoard::movePiece(const Position& start, const Position& end,
             captured_piece = board[captured_str].piece;
             captured_piece_color = board[captured_str].is_white;
             board.erase(captured_str);
-            std::cout << "\nEn passantla piyon alındı." << std::endl;
+            std::cout << "\nPawn captured via en passant." << std::endl;
         }
     }
 
-    // Rok 
+    // Castling
     if (validator.toLowerCase(start_square.piece) == "king" && 
         abs(end.x - start.x) == 2) {
         handleCastling(start, end);
     }
 
-    // undo için
+    // Add to move history for undo
     game_manager.addToMoveHistory({start, end, start_square.piece, start_square.is_white, 
                                   captured_piece, captured_piece_color});
 
-    // Portal kontrolü 
+    // Portal check
     for (const auto& portal : portal_system.getPortals()) {
         if (end.x == portal.positions.entry.x && end.y == portal.positions.entry.y) {
-            // ışınlandı
+            // Piece teleported
             Position portal_exit = portal.positions.exit;
             
             
@@ -138,7 +138,7 @@ void ChessBoard::movePiece(const Position& start, const Position& end,
                 board[exit_str] = board[end_str];
                 board.erase(end_str);
                 
-                // stacke
+                // Add portal move to stack
                 game_manager.addToMoveHistory({end, portal_exit, start_square.piece, 
                                              start_square.is_white, "", false});
                 
@@ -152,23 +152,23 @@ void ChessBoard::movePiece(const Position& start, const Position& end,
    
     portal_system.updateCooldowns();
 }
-//DÖNNNNN
+
 void ChessBoard::handlePawnPromotion(const Position& pos, bool is_white) {
     std::string promoted_piece;
-    std::cout << "\nPiyon terfi ediyor! Seçenekler: Queen, Rook, Bishop, Knight" << std::endl;
-    std::cout << "Terfi etmek istediğiniz taşı seçin: ";
+    std::cout << "\nPawn promotion! Options: Queen, Rook, Bishop, Knight" << std::endl;
+    std::cout << "Select piece to promote to: ";
     std::cin >> promoted_piece;
 
-    // İlk harfi büyük, geri kalanı küçük yap
+    // Capitalize first letter, lowercase the rest
     promoted_piece[0] = std::toupper(promoted_piece[0]);
     for (size_t i = 1; i < promoted_piece.length(); ++i) {
         promoted_piece[i] = std::tolower(promoted_piece[i]);
     }
 
-    // Geçerli bir seçim mi kontrol et
+    // Check if valid selection
     std::vector<std::string> valid_pieces = {"Queen", "Rook", "Bishop", "Knight"};
     while (std::find(valid_pieces.begin(), valid_pieces.end(), promoted_piece) == valid_pieces.end()) {
-        std::cout << "Geçersiz seçim. Lütfen tekrar deneyin: ";
+        std::cout << "Invalid selection. Please try again: ";
         std::cin >> promoted_piece;
         promoted_piece[0] = std::toupper(promoted_piece[0]);
         for (size_t i = 1; i < promoted_piece.length(); ++i) {
@@ -176,29 +176,29 @@ void ChessBoard::handlePawnPromotion(const Position& pos, bool is_white) {
         }
     }
 
-    // Piyonu terfi et
+    // Promote pawn
     std::string pos_str = posToString(pos);
     board[pos_str] = Square(promoted_piece, is_white);
-    std::cout << (is_white ? "Beyaz" : "Siyah") << " piyon " << promoted_piece << " olarak terfi etti!" << std::endl;
+    std::cout << (is_white ? "White" : "Black") << " pawn promoted to " << promoted_piece << "!" << std::endl;
 }
 
 void ChessBoard::handleCastling(const Position& king_start, const Position& king_end) {
-    // Kısa rok mu uzun rok mu?
+    // Determine if kingside or queenside castling
     bool is_kingside = king_end.x > king_start.x;
     
-    // Kalenin başlangıç ve bitiş pozisyonları
+    // Calculate rook start and end positions
     int rook_start_x = is_kingside ? 7 : 0;
     int rook_end_x = is_kingside ? 5 : 3;
     Position rook_start = {rook_start_x, king_start.y};
     Position rook_end = {rook_end_x, king_start.y};
     
-    // Kaleyi hareket ettir
+    // Move the rook
     std::string rook_start_str = posToString(rook_start);
     std::string rook_end_str = posToString(rook_end);
     board[rook_end_str] = board[rook_start_str];
     board.erase(rook_start_str);
     
-    std::cout << "\nRok yapıldı!" << std::endl;
+    std::cout << "\nCastling performed!" << std::endl;
 }
 
 void ChessBoard::printBoard() const {
@@ -220,7 +220,7 @@ void ChessBoard::printBoard() const {
       std::cout << "\n";
     }
   } else {
-    // Sütun (a,h) satır (1,8)
+    // Display columns (a-h) and rows (1-8)
     std::cout << "   ";
     for (int x = 0; x < board_size; ++x) {
       std::cout << (char)('a' + x) << "  ";
@@ -258,10 +258,10 @@ void ChessBoard::printBoard() const {
   }
 }
 
-//Koordinat sistemine dönüşüm 
+// Convert notation to position coordinates
 Position ChessBoard::notationToPosition(const std::string& notation) const {
     if (notation.length() != 2) {
-        throw std::invalid_argument("Geçersiz.");
+        throw std::invalid_argument("Invalid notation.");
     }
     
     int x = std::tolower(notation[0]) - 'a';
@@ -272,7 +272,7 @@ Position ChessBoard::notationToPosition(const std::string& notation) const {
 
 std::string ChessBoard::positionToNotation(const Position& pos) const {
     if (!isInBounds(pos)) {
-        throw std::invalid_argument("Geçersiz pozisyon.");
+        throw std::invalid_argument("Invalid position.");
     }
     
     char file = 'a' + pos.x;

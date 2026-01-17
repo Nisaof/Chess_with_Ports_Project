@@ -31,7 +31,7 @@ public:
   void movePiece(const Position& start, const Position& end, MoveValidator& validator, 
                  PortalSystem& portal_system, GameManager& game_manager);
   
-  // special hareketler
+  // Special moves
   Position notationToPosition(const std::string& notation) const;
   std::string positionToNotation(const Position& pos) const;
   void handlePawnPromotion(const Position& pos, bool is_white);

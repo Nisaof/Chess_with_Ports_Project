@@ -8,33 +8,33 @@
 #include <sstream>
 #include <cctype>
 
-// Konum dizesini ayrıştırma (ör. "a1" -> Position{0, 0})
+// Parse position string (e.g., "a1" -> Position{0, 0})
 bool parsePosition(const std::string& pos_str, Position& pos, int board_size) {
   if (pos_str.length() < 2) {
-    std::cerr << "Geçersiz pozisyon\n";
+    std::cerr << "Invalid position\n";
     return false;
   }
   char col = std::tolower(pos_str[0]);
   std::string row_str = pos_str.substr(1);
   if (col < 'a' || col >= 'a' + board_size) {
-    std::cerr << "Geçersiz pozisyon\n";
+    std::cerr << "Invalid position\n";
     return false;
   }
   try {
-    int row = std::stoi(row_str) - 1; // Kullanıcı 1-8 girer pc 0-7 kullanır
+    int row = std::stoi(row_str) - 1; // User enters 1-8, program uses 0-7
     if (row < 0 || row >= board_size) {
-      std::cerr << "Geçersiz pozisyon\n";
+      std::cerr << "Invalid position\n";
       return false;
     }
     pos = {col - 'a', row};
     return true;
   } catch (...) {
-    std::cerr << "Geçersiz pozisyon\n";
+    std::cerr << "Invalid position\n";
     return false;
   }
 }
 
-// Komut satırı girişi
+// Process command line input
 bool processMoveCommand(const std::string& command, ChessBoard& board, 
                         MoveValidator& validator, PortalSystem& portal_system, 
                         GameManager& game_manager, bool is_white_turn) {
@@ -42,62 +42,62 @@ bool processMoveCommand(const std::string& command, ChessBoard& board,
   std::string cmd, start_str, end_str, piece;
   iss >> cmd >> start_str >> end_str >> piece;
   if (cmd != "move" || start_str.empty() || end_str.empty() || piece.empty()) {
-    std::cout << "Geçersiz komut. Örnek: move a1 b2 king\n";
+    std::cout << "Invalid command. Example: move a1 b2 king\n";
     return false;
   }
 
   Position start, end;
   if (!parsePosition(start_str, start, board.getBoardSize()) || 
       !parsePosition(end_str, end, board.getBoardSize())) {
-    std::cout << "Geçersiz pozisyon. Örnek: a1, b2 (sınırlar içinde)\n";
+    std::cout << "Invalid position. Example: a1, b2 (within bounds)\n";
     return false;
   }
 
-  // Tahta üzerindeki taşın rengini kontrol et
+  // Check piece color on board
   const auto& start_square = board.getSquare(start);
   if (start_square.is_empty()) {
-    std::cout << "Başlangıç pozisyonunda taş yok.\n";
+    std::cout << "No piece at starting position.\n";
     return false;
   }
 
-  // Taşın sırayla uyumlu olduğunu kontrol et
+  // Check if piece matches current turn
   if (start_square.is_white != is_white_turn) {
-    std::cout << (is_white_turn ? "Beyaz" : "Siyah") << " oyuncunun sırası. "
-              << (start_square.is_white ? "Beyaz" : "Siyah") << " taş seçildi.\n";
+    std::cout << (is_white_turn ? "White" : "Black") << " player's turn. "
+              << (start_square.is_white ? "White" : "Black") << " piece selected.\n";
     return false;
   }
 
-  // Taş türünün girişle uyumlu olduğunu kontrol et
+  // Check if piece type matches input
   std::string piece_lower = validator.toLowerCase(piece);
   std::string square_piece_lower = validator.toLowerCase(start_square.piece);
   if (piece_lower != square_piece_lower) {
-    std::cout << "Başlangıç pozisyonundaki taş (" << start_square.piece
-              << ") ile belirtilen taş (" << piece << ") uyuşmuyor.\n";
+    std::cout << "Piece at starting position (" << start_square.piece
+              << ") does not match specified piece (" << piece << ").\n";
     return false;
   }
 
-  // Hareketi doğrula ve uygula
+  // Validate and apply move
   if (validator.isValidMove(piece, start, end, start_square.is_white, board, portal_system)) {
     board.movePiece(start, end, validator, portal_system, game_manager);
-    std::cout << "Hareket başarılı: " << start_str << " -> " << end_str << "\n";
+    std::cout << "Move successful: " << start_str << " -> " << end_str << "\n";
     board.printBoard();
     return true;
   } else {
-    std::cout << "Geçersiz hareket: " << piece << " için " << start_str << " -> " << end_str << "\n";
+    std::cout << "Invalid move: " << piece << " from " << start_str << " to " << end_str << "\n";
     return false;
   }
 }
 
 int main(int argc, char* argv[]) {
   if (!std::cin.good()) {
-    std::cerr << "Giriş hatası\n";
+    std::cerr << "Input error\n";
     return 1;
   }
 
   std::string config_file = (argc > 1) ? argv[1] : "data/chess_pieces.json";
   ConfigReader config_reader;
   if (!config_reader.loadFromFile(config_file)) {
-    std::cerr << "Yapılandırma dosyası yüklenemedi\n";
+    std::cerr << "Failed to load configuration file\n";
     return 1;
   }
 
@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
   int board_size = config_reader.getConfig().game_settings.board_size;
   
   if (board_size <= 0 || board_size > 26) {
-    std::cerr << "Geçersiz tahta boyutu\n";
+    std::cerr << "Invalid board size\n";
     return 1;
   }
 
@@ -115,14 +115,14 @@ int main(int argc, char* argv[]) {
   PortalSystem portal_system(config_reader.getConfig().portals);
   GameManager game_manager(board, validator, portal_system);
 
-  std::cout << "Başlangıç tahtası:\n";
+  std::cout << "Initial board:\n";
   board.printBoard();
-  std::cout << "Komutlar: move <başlangıç> <hedef> <taş> (ör. move a1 b2 king), undo, quit\n";
+  std::cout << "Commands: move <start> <end> <piece> (e.g., move a1 b2 king), undo, quit\n";
 
   bool is_white_turn = true;
   std::string command;
   while (true) {
-    std::cout << (is_white_turn ? "Beyaz" : "Siyah") << " oyuncunun sırası > ";
+    std::cout << (is_white_turn ? "White" : "Black") << " player's turn > ";
     std::cout.flush();
     
     if (!std::getline(std::cin, command)) {
@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (command == "quit") {
-      std::cout << "Oyun sona erdi.\n";
+      std::cout << "Game ended.\n";
       break;
     }
 
@@ -144,17 +144,17 @@ int main(int argc, char* argv[]) {
     if (!command.empty()) {
       if (processMoveCommand(command, board, validator, portal_system, game_manager, is_white_turn)) {
         if (game_manager.isCheckmate(!is_white_turn)) {
-          std::cout << (is_white_turn ? "Beyaz" : "Siyah") << " şah mat yaptı! Oyun bitti.\n";
+          std::cout << (is_white_turn ? "White" : "Black") << " checkmate! Game over.\n";
           break;
         }
         if (game_manager.isStalemate(!is_white_turn)) {
-          std::cout << "Oyun berabere bitti.\n";
+          std::cout << "Game ended in stalemate.\n";
           break;
         }
         is_white_turn = !is_white_turn;
       }
     } else {
-      std::cout << "Boş komut. Örnek: move a1 b2 king\n";
+      std::cout << "Empty command. Example: move a1 b2 king\n";
     }
   }
 

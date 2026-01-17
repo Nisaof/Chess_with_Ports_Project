@@ -14,7 +14,7 @@ bool GameManager::isInCheck(bool is_white_turn) const {
     Position king_position;
     bool king_found = false;
 
-    //şah kısmı
+    // Find the king
     for (int y = 0; y < chess_board.getBoardSize() && !king_found; ++y) {
         for (int x = 0; x < chess_board.getBoardSize() && !king_found; ++x) {
             const auto& square = chess_board.getSquare({x, y});
@@ -29,19 +29,19 @@ bool GameManager::isInCheck(bool is_white_turn) const {
         return false;
     }
 
-    // Tehdit 
+    // Check for threats
     const std::vector<std::string> threatening_pieces = {"queen", "rook", "bishop", "knight", "pawn"};
     
     for (int y = 0; y < chess_board.getBoardSize(); ++y) {
         for (int x = 0; x < chess_board.getBoardSize(); ++x) {
             const auto& square = chess_board.getSquare({x, y});
-            // Sadece rakip taşları kontrol edicek
+            // Only check opponent pieces
             if (!square.is_empty() && square.is_white != is_white_turn) {
                 std::string piece_lower = validator.toLowerCase(square.piece);
-                // Sadece tehditler
+                // Check only threatening pieces
                 if (std::find(threatening_pieces.begin(), threatening_pieces.end(), piece_lower) != threatening_pieces.end()) {
                     Position start = {x, y};
-                    // Taşın şahı tehdit ediyor mu
+                    // Check if piece threatens the king
                     if (validator.isValidMove(square.piece, start, king_position, !is_white_turn, 
                                            chess_board, portal_system)) {
                         return true;
@@ -55,39 +55,39 @@ bool GameManager::isInCheck(bool is_white_turn) const {
 }
 
 bool GameManager::isCheckmate(bool is_white_turn) {
-    // Önce şah mı
+    // First check if in check
     if (!isInCheck(is_white_turn)) {
         return false;
     }
 
-    // Tüm taşları ve olası hamleleri 
+    // Check all pieces and possible moves
     for (int y = 0; y < chess_board.getBoardSize(); ++y) {
         for (int x = 0; x < chess_board.getBoardSize(); ++x) {
             const auto& square = chess_board.getSquare({x, y});
             if (!square.is_empty() && square.is_white == is_white_turn) {
                 Position start = {x, y};
                 
-                // Tüm olası hedef kareleri 
+                // Check all possible destination squares
                 for (int dy = 0; dy < chess_board.getBoardSize(); ++dy) {
                     for (int dx = 0; dx < chess_board.getBoardSize(); ++dx) {
                         Position end = {dx, dy};
                         if (start.x == end.x && start.y == end.y) continue;
                         
-                        // Hamle geçerli mi 
+                        // Check if move is valid
                         if (validator.isValidMove(square.piece, start, end, is_white_turn,
                                                chess_board, portal_system)) {
-                            // Geçici tahta oluştur 
+                            // Create temporary board
                             ChessBoard temp_board = chess_board;
                             try {
-                                // Hamleyi yap
+                                // Make the move
                                 auto captured_piece = temp_board.getSquare(end);
                                 temp_board.placePiece(square.piece, square.is_white, end.x, end.y);
                                 temp_board.placePiece("", false, start.x, start.y);
                                 
-                                // Yeni durumda şah devam ediyor mu kontrol et
+                                // Check if still in check after move
                                 GameManager temp_manager(temp_board, validator, portal_system);
                                 if (!temp_manager.isInCheck(is_white_turn)) {
-                                    return false; // Kurtarıcı hamle var
+                                    return false; // Saving move exists
                                 }
                             } catch (const std::exception& e) {
                                 continue;
@@ -99,7 +99,7 @@ bool GameManager::isCheckmate(bool is_white_turn) {
         }
     }
 
-    return true; // kurtarıcı yok
+    return true; // No saving move found
 }
 
 bool GameManager::isStalemate(bool is_white_turn) const {
@@ -144,16 +144,16 @@ void GameManager::undoMove() {
     move_history.pop();
 
     try {
-        // Önce taşı geri alacak.
+        // Restore the moved piece to its original position
         chess_board.placePiece(last_move.moved_piece, last_move.moved_piece_color, 
                              last_move.start.x, last_move.start.y);
         
-        // Eğer yenen bir taş varsa onu geri koyucak.
+        // If a piece was captured, restore it
         if (!last_move.captured_piece.empty()) {
             chess_board.placePiece(last_move.captured_piece, last_move.captured_piece_color, 
                                  last_move.end.x, last_move.end.y);
         } else {
-            // Yenen taş yoksa hedef kareyi boşaltıcak.
+            // If no piece was captured, clear the destination square
             chess_board.placePiece("", false, last_move.end.x, last_move.end.y);
         }
 
@@ -163,7 +163,7 @@ void GameManager::undoMove() {
 
         portal_system.updateCooldowns();
     } catch (const std::exception& e) {
-        // Hata durumunda hamleyi geri alıcak ve hatayı bildiricek
+        // On error, restore the move to history and report the error
         move_history.push(last_move);
         std::cerr << "Error undoing move: " << e.what() << std::endl;
     }

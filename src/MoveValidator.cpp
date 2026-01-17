@@ -17,17 +17,17 @@ std::vector<Position> MoveValidator::getMoveEdges(const std::string& piece_lower
                                                   const Position& pos, bool is_white, 
                                                   const ChessBoard& board) const {
     std::vector<Position> edges;
-    int forward = is_white ? 1 : -1;  // Beyaz yukarı, siyah aşağı hareket eder
+    int forward = is_white ? 1 : -1;  // White moves up, black moves down
 
     std::string piece_type = toLowerCase(piece_lower);
 
     if (piece_type == "pawn") {
-        // Normal ileri hareket
+        // Normal forward movement
         Position forward_one = {pos.x, pos.y + forward};
         if (board.isInBounds(forward_one) && board.getSquare(forward_one).is_empty()) {
             edges.push_back(forward_one);
             
-            // İlk harekette 2 kare ileri
+            // First move: 2 squares forward
             if ((is_white && pos.y == 1) || (!is_white && pos.y == 6)) {
                 Position forward_two = {pos.x, pos.y + 2 * forward};
                 if (board.isInBounds(forward_two) && board.getSquare(forward_two).is_empty() &&
@@ -37,7 +37,7 @@ std::vector<Position> MoveValidator::getMoveEdges(const std::string& piece_lower
             }
         }
 
-        // Çapraz yeme hareketleri
+        // Diagonal capture moves
         std::vector<Position> captures = {
             {pos.x - 1, pos.y + forward},
             {pos.x + 1, pos.y + forward}
@@ -242,12 +242,12 @@ bool MoveValidator::isValidMove(const std::string& piece, const Position& start,
         }
     }
 
-    // Portal hareketi kontrolü
+    // Portal move check
     if (portal_system.isPortalMove(start, end)) {
-        std::cout << "\nPortal hareketi tespit edildi!" << std::endl;
+        std::cout << "\nPortal move detected!" << std::endl;
         bool valid = portal_system.validatePortalMove(piece, start, end, is_white, board);
         if (!valid) {
-            std::cout << "Portal kullanılamıyor - Cooldown veya renk kısıtlaması olabilir." << std::endl;
+            std::cout << "Portal cannot be used - Cooldown or color restriction may apply." << std::endl;
         }
         return valid;
     }
@@ -265,16 +265,16 @@ bool MoveValidator::isValidMove(const std::string& piece, const Position& start,
 
 bool MoveValidator::validateCastling(const Position& start, const Position& end, 
                                    bool is_white, const ChessBoard& board) const {
-    // Şah hareket etmiş mi kontrol et
+    // Check if king has moved
     if (start.x != 4 || start.y != (is_white ? 0 : 7)) {
         return false;
     }
 
-    // Kısa rok mu uzun rok mu?
+    // Determine if kingside or queenside castling
     bool is_kingside = end.x > start.x;
     int rook_x = is_kingside ? 7 : 0;
     
-    // Kale yerinde mi ve hareket etmemiş mi?
+    // Check if rook is in place and hasn't moved
     Position rook_pos = {rook_x, start.y};
     const auto& rook_square = board.getSquare(rook_pos);
     if (rook_square.is_empty() || toLowerCase(rook_square.piece) != "rook" || 
@@ -282,7 +282,7 @@ bool MoveValidator::validateCastling(const Position& start, const Position& end,
         return false;
     }
 
-    // Arada taş var mı kontrol et
+    // Check if there are pieces between king and rook
     int step = is_kingside ? 1 : -1;
     for (int x = start.x + step; x != rook_x; x += step) {
         if (!board.getSquare({x, start.y}).is_empty()) {
@@ -295,22 +295,22 @@ bool MoveValidator::validateCastling(const Position& start, const Position& end,
 
 bool MoveValidator::isEnPassantMove(const Position& start, const Position& end,
                                   bool is_white, const ChessBoard& board) const {
-    // En passant sadece 5. sırada (beyaz için) veya 4. sırada (siyah için) olabilir
+    // En passant can only occur on 5th rank (for white) or 4th rank (for black)
     if ((is_white && start.y != 4) || (!is_white && start.y != 3)) {
         return false;
     }
 
-    // Çapraz hareket olmalı
+    // Must be diagonal movement
     if (abs(end.x - start.x) != 1 || end.y != (is_white ? 5 : 2)) {
         return false;
     }
 
-    // Hedef kare boş olmalı
+    // Destination square must be empty
     if (!board.getSquare(end).is_empty()) {
         return false;
     }
 
-    // Yenilecek piyon son hamlede 2 kare ilerlemiş olmalı
+    // Captured pawn must have moved 2 squares in the last move
     Position captured_pos = {end.x, start.y};
     const auto& captured_square = board.getSquare(captured_pos);
     if (captured_square.is_empty() || toLowerCase(captured_square.piece) != "pawn" ||

@@ -26,11 +26,11 @@ struct Movement {
   int sideways = 0;
   int diagonal = 0;
   bool l_shape = false;
-  int diagonal_capture = 0;//çapraz yönde rakip taşları yemek
-  int first_move_forward = 0;//piyonun ilk hamlede yaptığı iki karelik hareket
+  int diagonal_capture = 0; // Capture diagonally
+  int first_move_forward = 0; // Pawn's two-square first move
 };
 
-// Special abilities for chess pieces(en son)
+// Special abilities for chess pieces
 struct SpecialAbilities {
   bool castling = false;
   bool royal = false;
@@ -45,7 +45,6 @@ struct SpecialAbilities {
 struct PieceConfig {
   std::string type;
   std::unordered_map<std::string, std::vector<Position>> positions;
-  // unordered map: key- value 
   Movement movement;
   SpecialAbilities special_abilities;
   int count;

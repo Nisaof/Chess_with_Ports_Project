@@ -25,7 +25,7 @@ private:
                        const Position& end, bool is_white, const ChessBoard& board, 
                        const PortalSystem& portal_system) const;
   
-  // Special hareketler
+  // Special moves
   bool validateCastling(const Position& start, const Position& end, 
                        bool is_white, const ChessBoard& board) const;
   bool isEnPassantMove(const Position& start, const Position& end,
